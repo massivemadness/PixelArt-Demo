@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="PixelArtView">
+        <attr name="gridColor" format="color" />
+        <attr name="cellColor" format="color" />
+        <attr name="cellCount" format="integer" />
+        <attr name="showGrid" format="boolean" />
+    </declare-styleable>
+
+</resources>
