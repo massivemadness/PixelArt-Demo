@@ -1,4 +1,4 @@
-package com.example.myapplication.ui
+package com.example.pixelartdemo.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -13,7 +13,7 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.res.use
 import androidx.core.content.res.getColorOrThrow
-import com.example.myapplication.R
+import com.example.pixelartdemo.R
 
 class PixelArtView @JvmOverloads constructor(
     context: Context,

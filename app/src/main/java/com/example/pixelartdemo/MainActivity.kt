@@ -1,10 +1,10 @@
-package com.example.myapplication
+package com.example.pixelartdemo
 
 import android.graphics.Color
 import android.os.Bundle
 import android.widget.Button
 import androidx.activity.ComponentActivity
-import com.example.myapplication.ui.PixelArtView
+import com.example.pixelartdemo.ui.PixelArtView
 
 class MainActivity : ComponentActivity() {
 

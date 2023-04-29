@@ -1,4 +1,4 @@
-package com.example.myapplication.ui
+package com.example.pixelartdemo.ui
 
 data class Point(
     val x: Int,

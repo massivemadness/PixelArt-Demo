@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.pixelartdemo
 
 import org.junit.Test
 
