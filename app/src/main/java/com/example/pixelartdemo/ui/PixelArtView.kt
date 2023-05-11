@@ -11,8 +11,9 @@ import android.util.TypedValue
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import androidx.core.content.res.use
+import android.widget.Scroller
 import androidx.core.content.res.getColorOrThrow
+import androidx.core.content.res.use
 import com.example.pixelartdemo.R
 
 class PixelArtView @JvmOverloads constructor(
@@ -21,22 +22,28 @@ class PixelArtView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
 
-    private val gridPaint = Paint()
-    private val cellPaint = Paint()
-    private val hoverPaint = Paint()
-
     var cellCount: Int = 10
         set(value) { field = value; invalidate() }
     var showGrid: Boolean = true
         set(value) { field = value; invalidate() }
+    var canScroll: Boolean = true
+        set(value) { field = value; }
 
     var gridColor: Int = 0x000000
         set(value) { field = value; invalidate() }
     var cellColor: Int = 0xFFFFFF
         set(value) { field = value; invalidate() }
 
+    private val gridPaint = Paint()
+    private val cellPaint = Paint()
+    private val hoverPaint = Paint()
+
+    private val scroller = Scroller(context)
+
     private var pixmap = mutableListOf<Point>()
     private var hover: Point? = null
+    private var touchX = 0f
+    private var touchY = 0f
 
     init {
         context.theme.obtainStyledAttributes(attrs, R.styleable.PixelArtView, 0, 0).use { array ->
@@ -61,6 +68,8 @@ class PixelArtView @JvmOverloads constructor(
 
         val padding = 16.dp().toInt()
         setPadding(padding, padding, padding, padding)
+
+        isSaveEnabled = true
         isClickable = true
     }
 
@@ -146,9 +155,28 @@ class PixelArtView @JvmOverloads constructor(
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         when (event?.action) {
-            MotionEvent.ACTION_DOWN -> hover(event.x, event.y)
-            MotionEvent.ACTION_MOVE -> hover(event.x, event.y)
-            MotionEvent.ACTION_UP -> place(event.x, event.y)
+            MotionEvent.ACTION_DOWN -> {
+                hover(event.x, event.y)
+                touchX = event.x
+                touchY = event.y
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!canScroll) {
+                    hover(event.x, event.y)
+                } else {
+                    val deltaX = (event.x - touchX).toInt()
+                    val deltaY = (event.y - touchY).toInt()
+                    scrollBy(-deltaX, -deltaY)
+                    hover = null
+                }
+                touchX = event.x
+                touchY = event.y
+            }
+            MotionEvent.ACTION_UP -> {
+                if (hover != null) {
+                    place(event.x, event.y)
+                }
+            }
             MotionEvent.ACTION_CANCEL -> {
                 hover = null
                 invalidate()
@@ -157,9 +185,18 @@ class PixelArtView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
+    override fun computeScroll() {
+        if (scroller.computeScrollOffset()) {
+            scrollTo(scroller.currX, scroller.currY)
+            postInvalidate()
+        }
+    }
+
     override fun onSaveInstanceState(): Parcelable {
         return SavedState(super.onSaveInstanceState()).apply {
             this.pixmap = this@PixelArtView.pixmap
+            this.scrollX = this@PixelArtView.scrollX
+            this.scrollY = this@PixelArtView.scrollY
         }
     }
 
@@ -167,6 +204,8 @@ class PixelArtView @JvmOverloads constructor(
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
             this.pixmap = state.pixmap
+            this.scrollX = state.scrollX
+            this.scrollY = state.scrollY
         } else {
             super.onRestoreInstanceState(state)
         }
@@ -174,8 +213,8 @@ class PixelArtView @JvmOverloads constructor(
 
     private fun place(clickX: Float, clickY: Float) {
         checkBounds(
-            x = clickX,
-            y = clickY,
+            x = scrollX + clickX,
+            y = scrollY + clickY,
             isInBounds = { x, y ->
                 val point = Point(x, y, cellColor)
                 val existing = pixmap.find { it.x == point.x && it.y == point.y }
@@ -197,8 +236,8 @@ class PixelArtView @JvmOverloads constructor(
 
     private fun hover(hoverX: Float, hoverY: Float) {
         checkBounds(
-            x = hoverX,
-            y = hoverY,
+            x = scrollX + hoverX,
+            y = scrollY + hoverY,
             isInBounds = { x, y ->
                 hover = Point(x, y, cellColor)
                 invalidate()
@@ -256,12 +295,15 @@ class PixelArtView @JvmOverloads constructor(
     private class SavedState : BaseSavedState {
 
         var pixmap = mutableListOf<Point>()
+        var scrollX = 0
+        var scrollY = 0
 
         constructor(superState: Parcelable?) : super(superState)
         constructor(source: Parcel?) : super(source) {
             source?.run {
-                val size = source.readInt()
-                for (i in 0..size) {
+                scrollX = source.readInt()
+                scrollY = source.readInt()
+                for (i in 0..source.readInt()) {
                     val point = Point(
                         x = source.readInt(),
                         y = source.readInt(),
@@ -274,6 +316,8 @@ class PixelArtView @JvmOverloads constructor(
 
         override fun writeToParcel(out: Parcel, flags: Int) {
             super.writeToParcel(out, flags)
+            out.writeInt(scrollX)
+            out.writeInt(scrollY)
             out.writeInt(pixmap.size)
             for ((x, y, color) in pixmap) {
                 out.writeInt(x)
