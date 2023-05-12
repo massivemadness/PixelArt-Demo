@@ -23,47 +23,59 @@ class PixelArtView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     var cellCount: Int = 10
-        set(value) { field = value; invalidate() }
+        set(value) {
+            field = value
+            invalidate()
+        }
     var showGrid: Boolean = true
-        set(value) { field = value; invalidate() }
-    var canScroll: Boolean = true
-        set(value) { field = value; }
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     var gridColor: Int = 0x000000
-        set(value) { field = value; invalidate() }
+        set(value) {
+            field = value
+            gridPaint.color = gridColor
+            invalidate()
+        }
     var cellColor: Int = 0xFFFFFF
-        set(value) { field = value; invalidate() }
+        set(value) {
+            field = value
+            cellPaint.color = cellColor
+            hoverPaint.color = cellColor
+            hoverPaint.alpha = 100
+            invalidate()
+        }
 
-    private val gridPaint = Paint()
+    var canScroll: Boolean = true
+        set(value) {
+            field = value
+        }
+
+    private val gridPaint = Paint().apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.dp()
+    }
+    private val hoverPaint = Paint().apply {
+        style = Paint.Style.FILL_AND_STROKE
+        alpha = 100
+    }
     private val cellPaint = Paint()
-    private val hoverPaint = Paint()
 
     private val scroller = Scroller(context)
-
-    private var pixmap = mutableListOf<Point>()
-    private var hover: Point? = null
     private var touchX = 0f
     private var touchY = 0f
 
+    private var pixmap = mutableListOf<Point>()
+    private var hover: Point? = null
+
     init {
         context.theme.obtainStyledAttributes(attrs, R.styleable.PixelArtView, 0, 0).use { array ->
-            gridColor = array.getColorOrThrow(R.styleable.PixelArtView_gridColor)
-            cellColor = array.getColorOrThrow(R.styleable.PixelArtView_cellColor)
-
-            gridPaint.color = gridColor
-            gridPaint.style = Paint.Style.STROKE
-            gridPaint.strokeWidth = 1.dp()
-
-            cellPaint.color = cellColor
-            cellPaint.style = Paint.Style.FILL_AND_STROKE
-            cellPaint.strokeWidth = 1f
-
-            hoverPaint.color = cellColor
-            hoverPaint.style = Paint.Style.FILL_AND_STROKE
-            hoverPaint.alpha = 100
-
             cellCount = array.getInteger(R.styleable.PixelArtView_cellCount, 10)
             showGrid = array.getBoolean(R.styleable.PixelArtView_showGrid, true)
+            gridColor = array.getColorOrThrow(R.styleable.PixelArtView_gridColor)
+            cellColor = array.getColorOrThrow(R.styleable.PixelArtView_cellColor)
         }
 
         val padding = 16.dp().toInt()
@@ -100,7 +112,6 @@ class PixelArtView @JvmOverloads constructor(
         )
 
         if (showGrid) {
-            gridPaint.color = gridColor
             for (i in 1 until cellCount) {
                 canvas.drawLine(
                     horizontalX,
@@ -122,8 +133,6 @@ class PixelArtView @JvmOverloads constructor(
         }
 
         if (hover != null) {
-            hoverPaint.color = cellColor
-            hoverPaint.alpha = 100
             val (hoverX, hoverY) = hover!!
             if (hoverX >= 0 && hoverY >= 0) {
                 val pixelX = hoverX * cellSize
@@ -194,18 +203,28 @@ class PixelArtView @JvmOverloads constructor(
 
     override fun onSaveInstanceState(): Parcelable {
         return SavedState(super.onSaveInstanceState()).apply {
-            this.pixmap = this@PixelArtView.pixmap
-            this.scrollX = this@PixelArtView.scrollX
-            this.scrollY = this@PixelArtView.scrollY
+            cellCount = this@PixelArtView.cellCount
+            showGrid = this@PixelArtView.showGrid
+            gridColor = this@PixelArtView.gridColor
+            cellColor = this@PixelArtView.cellColor
+            canScroll = this@PixelArtView.canScroll
+            pixmap = this@PixelArtView.pixmap
+            scrollX = this@PixelArtView.scrollX
+            scrollY = this@PixelArtView.scrollY
         }
     }
 
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
-            this.pixmap = state.pixmap
-            this.scrollX = state.scrollX
-            this.scrollY = state.scrollY
+            cellCount = state.cellCount
+            showGrid = state.showGrid
+            gridColor = state.gridColor
+            cellColor = state.cellColor
+            canScroll = state.canScroll
+            pixmap = state.pixmap
+            scrollX = state.scrollX
+            scrollY = state.scrollY
         } else {
             super.onRestoreInstanceState(state)
         }
@@ -267,7 +286,7 @@ class PixelArtView @JvmOverloads constructor(
             if (x <= horizontalPoint && x >= horizontalPoint - cellSize) {
                 placeX = i - 1
             }
-            if (y <= verticalPoint  && y >= verticalPoint - cellSize) {
+            if (y <= verticalPoint && y >= verticalPoint - cellSize) {
                 placeY = i - 1
             }
             horizontalPoint += cellSize
@@ -294,6 +313,11 @@ class PixelArtView @JvmOverloads constructor(
 
     private class SavedState : BaseSavedState {
 
+        var cellCount = 10
+        var showGrid = true
+        var gridColor = 0x000000
+        var cellColor = 0xFFFFFF
+        var canScroll = true
         var pixmap = mutableListOf<Point>()
         var scrollX = 0
         var scrollY = 0
@@ -301,6 +325,11 @@ class PixelArtView @JvmOverloads constructor(
         constructor(superState: Parcelable?) : super(superState)
         constructor(source: Parcel?) : super(source) {
             source?.run {
+                cellCount = source.readInt()
+                showGrid = source.readInt() == 1
+                gridColor = source.readInt()
+                cellColor = source.readInt()
+                canScroll = source.readInt() == 1
                 scrollX = source.readInt()
                 scrollY = source.readInt()
                 for (i in 0..source.readInt()) {
@@ -316,6 +345,11 @@ class PixelArtView @JvmOverloads constructor(
 
         override fun writeToParcel(out: Parcel, flags: Int) {
             super.writeToParcel(out, flags)
+            out.writeInt(cellCount)
+            out.writeInt(if (showGrid) 1 else 0)
+            out.writeInt(gridColor)
+            out.writeInt(cellColor)
+            out.writeInt(if (canScroll) 1 else 0)
             out.writeInt(scrollX)
             out.writeInt(scrollY)
             out.writeInt(pixmap.size)
